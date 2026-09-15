@@ -1,17 +1,37 @@
-import React from 'react';
+import { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
-import { getMockCurrentWeather, getMockHourlyForecast } from '../services/weatherService';
-import { Cloud, Droplets, Wind, Thermometer, AlertTriangle } from 'lucide-react';
+import { fetchRealWeather, WeatherData, HourlyForecast } from '../services/weatherService';
+import { Cloud, Droplets, Wind, AlertTriangle, Loader2 } from 'lucide-react';
 import { getMockAlerts } from '../services/alertService';
-import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
 import { useNavigate } from 'react-router-dom';
 
 export default function Dashboard() {
-  const weather = getMockCurrentWeather();
-  const hourly = getMockHourlyForecast();
+  const [weather, setWeather] = useState<WeatherData | null>(null);
+  const [hourly, setHourly] = useState<HourlyForecast[]>([]);
+  const [loading, setLoading] = useState(true);
+  
   const alerts = getMockAlerts();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    const loadWeather = async () => {
+      try {
+        const data = await fetchRealWeather();
+        setWeather(data.current);
+        setHourly(data.hourly);
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadWeather();
+  }, []);
+
+  if (loading || !weather) {
+    return <div className="flex h-64 items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
+  }
 
   return (
     <div className="space-y-6">
@@ -75,7 +95,7 @@ export default function Dashboard() {
       {/* Hourly Forecast */}
       <Card>
         <CardHeader>
-          <CardTitle>Hourly Forecast</CardTitle>
+          <CardTitle>Hourly Forecast (Powered by GFS)</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="flex overflow-x-auto gap-4 pb-4">

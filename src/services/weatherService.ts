@@ -1,11 +1,10 @@
+// Real-time Weather Service using Open-Meteo (GFS Models)
+
 export interface WeatherData {
   temp: number;
   feelsLike: number;
   humidity: number;
   windSpeed: number;
-  pressure: number;
-  visibility: number;
-  uvIndex: number;
   rainProb: number;
   condition: string;
   summary: string;
@@ -20,49 +19,56 @@ export interface HourlyForecast {
   condition: string;
 }
 
-export interface DailyForecast {
-  date: string;
-  minTemp: number;
-  maxTemp: number;
-  rainProb: number;
-  wind: number;
-  humidity: number;
-  condition: string;
-}
-
-export const getMockCurrentWeather = (location?: string): WeatherData => ({
-  temp: 29,
-  feelsLike: 32,
-  humidity: 78,
-  windSpeed: 12,
-  pressure: 1012,
-  visibility: 8,
-  uvIndex: 6,
-  rainProb: 35,
-  condition: "Partly Cloudy",
-  summary: "Warm conditions are expected today with a possibility of afternoon rainfall.",
-  location: location || "Darbhanga, Bihar"
-});
-
-export const getMockHourlyForecast = (): HourlyForecast[] => {
-  return [
-    { time: "08:00", temp: 29, rainProb: 10, wind: 10, condition: "Sunny" },
-    { time: "12:00", temp: 32, rainProb: 35, wind: 14, condition: "Partly Cloudy" },
-    { time: "16:00", temp: 30, rainProb: 78, wind: 18, condition: "Rain" },
-    { time: "20:00", temp: 27, rainProb: 25, wind: 12, condition: "Cloudy" },
-    { time: "00:00", temp: 26, rainProb: 10, wind: 8, condition: "Clear" },
-    { time: "04:00", temp: 25, rainProb: 5, wind: 6, condition: "Clear" },
-  ];
+const getWeatherCondition = (code: number): string => {
+  if (code === 0) return "Clear Sky";
+  if (code === 1 || code === 2 || code === 3) return "Partly Cloudy";
+  if (code === 45 || code === 48) return "Fog";
+  if (code >= 51 && code <= 55) return "Drizzle";
+  if (code >= 61 && code <= 65) return "Rain";
+  if (code >= 71 && code <= 75) return "Snow";
+  if (code >= 80 && code <= 82) return "Heavy Rain";
+  if (code >= 95) return "Thunderstorm";
+  return "Clear";
 };
 
-export const getMockDailyForecast = (): DailyForecast[] => {
-  return [
-    { date: "Today", minTemp: 26, maxTemp: 32, rainProb: 60, wind: 15, humidity: 75, condition: "Rain" },
-    { date: "Tomorrow", minTemp: 25, maxTemp: 31, rainProb: 80, wind: 20, humidity: 82, condition: "Storm" },
-    { date: "Wed", minTemp: 27, maxTemp: 34, rainProb: 20, wind: 10, humidity: 65, condition: "Sunny" },
-    { date: "Thu", minTemp: 28, maxTemp: 35, rainProb: 10, wind: 8, humidity: 60, condition: "Sunny" },
-    { date: "Fri", minTemp: 27, maxTemp: 33, rainProb: 40, wind: 12, humidity: 70, condition: "Cloudy" },
-    { date: "Sat", minTemp: 26, maxTemp: 32, rainProb: 50, wind: 14, humidity: 75, condition: "Rain" },
-    { date: "Sun", minTemp: 25, maxTemp: 30, rainProb: 90, wind: 25, humidity: 85, condition: "Storm" },
-  ];
+export const fetchRealWeather = async (lat = 26.1542, lon = 85.8918, locationName = "Darbhanga, Bihar"): Promise<{current: WeatherData, hourly: HourlyForecast[]}> => {
+  try {
+    const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,apparent_temperature,precipitation,weather_code,wind_speed_10m&hourly=temperature_2m,precipitation_probability,weather_code,wind_speed_10m&timezone=Asia%2FKolkata`);
+    const data = await res.json();
+
+    const current: WeatherData = {
+      temp: Math.round(data.current.temperature_2m),
+      feelsLike: Math.round(data.current.apparent_temperature),
+      humidity: data.current.relative_humidity_2m,
+      windSpeed: Math.round(data.current.wind_speed_10m),
+      rainProb: data.hourly.precipitation_probability[0],
+      condition: getWeatherCondition(data.current.weather_code),
+      summary: `Current conditions feature ${getWeatherCondition(data.current.weather_code).toLowerCase()} with a temperature of ${Math.round(data.current.temperature_2m)}°C. Data powered by GFS NWP Models.`,
+      location: locationName
+    };
+
+    const hourly: HourlyForecast[] = [];
+    for (let i = 0; i < 24; i += 3) {
+      const date = new Date(data.hourly.time[i]);
+      hourly.push({
+        time: `${date.getHours().toString().padStart(2, '0')}:00`,
+        temp: Math.round(data.hourly.temperature_2m[i]),
+        rainProb: data.hourly.precipitation_probability[i],
+        wind: Math.round(data.hourly.wind_speed_10m[i]),
+        condition: getWeatherCondition(data.hourly.weather_code[i])
+      });
+    }
+
+    return { current, hourly };
+  } catch (error) {
+    console.error("Error fetching weather:", error);
+    // Fallback to mock if offline
+    return {
+      current: {
+        temp: 29, feelsLike: 32, humidity: 78, windSpeed: 12, rainProb: 35,
+        condition: "Partly Cloudy", summary: "Offline Mock Data", location: locationName
+      },
+      hourly: []
+    };
+  }
 };

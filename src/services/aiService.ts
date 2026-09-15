@@ -1,5 +1,3 @@
-import { getMockCurrentWeather } from './weatherService';
-
 export interface ChatMessage {
   id: string;
   role: 'user' | 'assistant';
@@ -11,40 +9,52 @@ export interface ChatMessage {
 export const processQuery = async (query: string): Promise<ChatMessage> => {
   const lowerQuery = query.toLowerCase();
   
-  // Simulate network delay
-  await new Promise(resolve => setTimeout(resolve, 800));
+  try {
+    // We use Pollinations AI, a free public LLM wrapper, to act as the AI Backend.
+    // It requires no API key, making it perfect for a live hackathon prototype.
+    const response = await fetch('https://text.pollinations.ai/openai/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        messages: [
+          { 
+            role: "system", 
+            content: "You are WeatherGPT, an advanced AI for weather forecasting, disaster alerts, and climate information, developed for the Smart India Hackathon (Ministry of Earth Sciences). You provide concise, professional, and helpful responses to users regarding weather conditions, crop advice, and extreme alerts. Keep responses under 4 sentences." 
+          },
+          { role: "user", content: query }
+        ],
+        model: "openai"
+      })
+    });
 
-  if (lowerQuery.includes('rain') && lowerQuery.includes('tomorrow')) {
+    const data = await response.json();
+    let reply = data.choices[0].message.content;
+
+    // We can also trigger dynamic UI components based on keywords in the AI's response or user's prompt
+    let component: ChatMessage['component'];
+    let componentData: any;
+
+    if (lowerQuery.includes('rain') || lowerQuery.includes('weather') || lowerQuery.includes('tomorrow')) {
+      component = 'WeatherCard';
+      componentData = { temp: 28, condition: 'High Rain Probability', location: 'Darbhanga' };
+    } else if (lowerQuery.includes('alert') || lowerQuery.includes('risk') || lowerQuery.includes('disaster')) {
+      component = 'AlertCard';
+      componentData = { location: 'Bihar Region' };
+    }
+
     return {
       id: Date.now().toString(),
       role: 'assistant',
-      content: "Yes, there is a high probability (80%) of rain tomorrow. Expect stormy conditions.",
-      component: 'WeatherCard',
-      data: getMockCurrentWeather()
+      content: reply,
+      component,
+      data: componentData
     };
-  }
-
-  if (lowerQuery.includes('irrigate') && lowerQuery.includes('wheat')) {
+  } catch (error) {
+    console.error("AI Error:", error);
     return {
       id: Date.now().toString(),
       role: 'assistant',
-      content: "Rain is expected in the next 24 hours. Consider postponing irrigation and monitor official weather warnings. **AI-generated advisory — not a substitute for official agricultural guidance.**",
+      content: "I am currently experiencing connectivity issues with the AI backend. Please try again later."
     };
   }
-  
-  if (lowerQuery.includes('districts') && lowerQuery.includes('risk')) {
-    return {
-      id: Date.now().toString(),
-      role: 'assistant',
-      content: "Currently, Darbhanga and Patna are showing elevated risk levels due to Heavy Rain and Thunderstorms.",
-      component: 'AlertCard',
-      data: { location: 'Darbhanga' } 
-    };
-  }
-
-  return {
-    id: Date.now().toString(),
-    role: 'assistant',
-    content: "Based on the available data, conditions are warm today with a possibility of afternoon rainfall. Ask me about specific locations or extreme weather alerts!"
-  };
 };
