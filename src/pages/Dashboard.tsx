@@ -70,7 +70,7 @@ export default function Dashboard() {
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row gap-4 justify-between items-start">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Good morning, John</h1>
+          <h1 className="text-3xl font-bold tracking-tight">Good morning, {JSON.parse(localStorage.getItem('user') || '{}').name || 'Citizen'}</h1>
           <p className="text-muted-foreground">{weather.summary}</p>
         </div>
         {alerts.length > 0 && (
