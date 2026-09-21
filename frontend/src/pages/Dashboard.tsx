@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
-import { fetchRealWeather, WeatherData, HourlyForecast } from '../services/weatherService';
+import { fetchRealWeather, type WeatherData, type HourlyForecast } from '../services/weatherService';
 import { Cloud, Droplets, Wind, AlertTriangle, Loader2, MapPin } from 'lucide-react';
 import { getMockAlerts } from '../services/alertService';
 import { Button } from '../components/ui/button';
