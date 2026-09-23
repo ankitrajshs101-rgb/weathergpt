@@ -55,6 +55,25 @@ const cropStages = [
 
 const farmConditions = ['Normal', 'Waterlogging Risk', 'Dry Soil', 'Pest Symptoms', 'Disease Symptoms', 'Heat Stress', 'Cold Stress'];
 const irrigationTypes = ['Rainfed', 'Canal', 'Drip', 'Sprinkler', 'Tube Well', 'Flood Irrigation'];
+const regionalLanguages = [
+  { label: 'Hindi', value: 'hi-IN' },
+  { label: 'English', value: 'en-IN' },
+  { label: 'Bengali', value: 'bn-IN' },
+  { label: 'Tamil', value: 'ta-IN' },
+  { label: 'Telugu', value: 'te-IN' },
+  { label: 'Marathi', value: 'mr-IN' },
+  { label: 'Gujarati', value: 'gu-IN' },
+  { label: 'Kannada', value: 'kn-IN' },
+  { label: 'Malayalam', value: 'ml-IN' },
+  { label: 'Punjabi', value: 'pa-IN' },
+  { label: 'Urdu', value: 'ur-IN' },
+  { label: 'Odia', value: 'or-IN' },
+  { label: 'Assamese', value: 'as-IN' },
+  { label: 'Konkani', value: 'kok-IN' },
+  { label: 'Maithili', value: 'mai-IN' },
+  { label: 'Nepali', value: 'ne-IN' },
+  { label: 'Sanskrit', value: 'sa-IN' },
+];
 
 const selectClasses = 'h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring';
 
@@ -131,6 +150,7 @@ export default function AgricultureIntelligence() {
   const [stage, setStage] = useState(cropStages[0]);
   const [condition, setCondition] = useState(farmConditions[0]);
   const [irrigation, setIrrigation] = useState(irrigationTypes[0]);
+  const [language, setLanguage] = useState(regionalLanguages[0].value);
   const [analyzed, setAnalyzed] = useState(false);
   const navigate = useNavigate();
   const { location, locating, refreshLocation } = useUserLocation();
@@ -141,6 +161,36 @@ export default function AgricultureIntelligence() {
   const handleAnalyze = (e: React.FormEvent) => {
     e.preventDefault();
     setAnalyzed(true);
+  };
+
+  const askWeatherGptAboutCrop = () => {
+    const prompt = [
+      'Please give a complete farmer advisory using this crop profile.',
+      `Crop: ${crop}`,
+      `Crop stage: ${stage}`,
+      `Field condition: ${condition}`,
+      `Irrigation source: ${irrigation}`,
+      `Risk level: ${risk.level}`,
+      `Risk headline: ${risk.headline}`,
+      `Location: ${location.name}`,
+      `Current recommendations: ${recommendations.join(' ')}`,
+      'Use live weather, explain risks, irrigation decision, pest/disease precautions, and next 24-48 hour action steps.',
+    ].join('\n');
+
+    navigate('/chat', {
+      state: {
+        agriculturePrompt: prompt,
+        agricultureLanguage: language,
+        agricultureProfile: {
+          crop,
+          stage,
+          condition,
+          irrigation,
+          riskLevel: risk.level,
+          location: location.name,
+        },
+      },
+    });
   };
 
   return (
@@ -202,6 +252,15 @@ export default function AgricultureIntelligence() {
                 <select id="irrigation" value={irrigation} onChange={e => setIrrigation(e.target.value)} className={selectClasses}>
                   {irrigationTypes.map(item => (
                     <option key={item} value={item}>{item}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="space-y-2 text-left">
+                <Label htmlFor="language">Advisory Language</Label>
+                <select id="language" value={language} onChange={e => setLanguage(e.target.value)} className={selectClasses}>
+                  {regionalLanguages.map(item => (
+                    <option key={item.value} value={item.value}>{item.label}</option>
                   ))}
                 </select>
               </div>
@@ -282,7 +341,7 @@ export default function AgricultureIntelligence() {
                 </CardContent>
               </Card>
 
-              <Button variant="outline" className="w-full border-green-200 text-green-700 hover:bg-green-50 dark:hover:bg-green-900/20 py-6" onClick={() => navigate('/chat')}>
+              <Button variant="outline" className="w-full border-green-200 text-green-700 hover:bg-green-50 dark:hover:bg-green-900/20 py-6" onClick={askWeatherGptAboutCrop}>
                 Ask WeatherGPT about {crop} <ArrowRight className="ml-2 h-5 w-5" />
               </Button>
             </>

@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, Mic, MapPin, Globe, Paperclip, Loader2, Cloud, AlertTriangle, Volume2, VolumeX } from 'lucide-react';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { Send, Mic, MapPin, Globe, Paperclip, Loader2, Cloud, AlertTriangle, Volume2, VolumeX, Sprout } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Card, CardContent } from '../components/ui/card';
@@ -59,6 +60,20 @@ const languageOptions = [
 // 3. The answer is added to messages and can be spoken aloud.
 // 4. Weather/alert cards render when aiService marks a message with a component.
 export default function AiChat() {
+  const routeLocation = useLocation();
+  const navigate = useNavigate();
+  const agricultureState = routeLocation.state as {
+    agriculturePrompt?: string;
+    agricultureLanguage?: string;
+    agricultureProfile?: {
+      crop: string;
+      stage: string;
+      condition: string;
+      irrigation: string;
+      riskLevel: string;
+      location: string;
+    };
+  } | null;
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       id: 'welcome',
@@ -77,6 +92,7 @@ export default function AiChat() {
   const { location: userLocation, locating, refreshLocation } = useUserLocation();
   const selectedLanguage = language || navigator.language || 'en-IN';
   const voiceSupported = typeof window !== 'undefined' && Boolean(window.SpeechRecognition || window.webkitSpeechRecognition);
+  const agriculturePromptHandledRef = useRef(false);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -92,6 +108,17 @@ export default function AiChat() {
       window.speechSynthesis?.cancel();
     };
   }, []);
+
+  useEffect(() => {
+    if (agriculturePromptHandledRef.current || !agricultureState?.agriculturePrompt) return;
+
+    agriculturePromptHandledRef.current = true;
+    if (agricultureState.agricultureLanguage) {
+      setLanguage(agricultureState.agricultureLanguage);
+    }
+    void sendQuery(agricultureState.agriculturePrompt, agricultureState.agricultureLanguage);
+    navigate('/chat', { replace: true, state: null });
+  }, [agricultureState, navigate]);
 
   const speakMessage = (message: ChatMessage) => {
     if (!('speechSynthesis' in window) || message.role !== 'assistant') return;
@@ -112,7 +139,7 @@ export default function AiChat() {
     window.speechSynthesis.speak(utterance);
   };
 
-  const sendQuery = async (query: string) => {
+  const sendQuery = async (query: string, languageOverride?: string) => {
     const cleanQuery = query.trim();
     if (!cleanQuery || loading) return;
 
@@ -123,7 +150,7 @@ export default function AiChat() {
     setVoiceError('');
 
     try {
-      const response = await processQuery(userMsg.content, selectedLanguage, userLocation);
+      const response = await processQuery(userMsg.content, languageOverride || selectedLanguage, userLocation);
       setMessages(prev => [...prev, response]);
       setTimeout(() => speakMessage(response), 100);
     } catch (error) {
@@ -198,6 +225,16 @@ export default function AiChat() {
         <button type="button" onClick={refreshLocation} className="mt-2 text-sm text-primary hover:underline">
           {locating ? 'Detecting your location...' : `Using ${userLocation.name}`}
         </button>
+        {agricultureState?.agricultureProfile && (
+          <div className="mt-3 inline-flex flex-wrap items-center justify-center gap-2 rounded-lg border bg-green-50 px-3 py-2 text-sm text-green-800">
+            <Sprout className="h-4 w-4" />
+            <span>{agricultureState.agricultureProfile.crop}</span>
+            <span>•</span>
+            <span>{agricultureState.agricultureProfile.stage}</span>
+            <span>•</span>
+            <span>{agricultureState.agricultureProfile.riskLevel} risk</span>
+          </div>
+        )}
       </div>
 
       <div className="flex-1 overflow-y-auto space-y-6 p-4 rounded-xl border bg-background/50 backdrop-blur-sm shadow-sm mb-4">
