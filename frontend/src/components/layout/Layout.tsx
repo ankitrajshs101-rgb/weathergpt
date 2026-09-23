@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { LayoutDashboard, MessageSquare, Map, AlertTriangle, Sprout, BarChart, LogOut, CloudRain } from 'lucide-react';
 import { Button } from '../ui/button';
@@ -9,6 +9,19 @@ export default function Layout() {
   const navigate = useNavigate();
   const location = useLocation();
   const { location: userLocation, locating, refreshLocation } = useUserLocation();
+  const currentUser = useMemo(() => {
+    try {
+      return JSON.parse(localStorage.getItem('user') || '{}');
+    } catch {
+      return {};
+    }
+  }, []);
+  const initials = (currentUser.name || currentUser.email || 'User')
+    .split(/[ @._-]+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part: string) => part[0]?.toUpperCase())
+    .join('') || 'U';
 
   const navItems = [
     { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
@@ -68,8 +81,11 @@ export default function Layout() {
             >
               {locating ? 'Detecting location...' : `Location: ${userLocation.name}`}
             </button>
-            <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold text-sm">
-              JD
+            <div
+              className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold text-sm"
+              title={currentUser.name || currentUser.email || 'User'}
+            >
+              {initials}
             </div>
           </div>
         </header>
