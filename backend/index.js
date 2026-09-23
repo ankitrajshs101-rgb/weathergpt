@@ -90,6 +90,18 @@ const authenticate = (req, res, next) => {
   }
 };
 
+const createFallbackReply = (query, language, location) => {
+  const locale = (language || '').toLowerCase();
+  const isHindi = locale.startsWith('hi') || /[\u0900-\u097F]/.test(query);
+  const place = location || 'your area';
+
+  if (isHindi) {
+    return `${place} ke liye abhi live AI response available nahi hai, lekin weather check karte waqt temperature, humidity, wind aur rain probability par dhyan dein. Agar badal ghane hon, tez hawa chale, ya barish ka alert ho to travel aur kheti ka kaam plan karke karein. Accurate live forecast ke liye dashboard weather card aur official IMD/NCMRWF updates bhi check karein.`;
+  }
+
+  return `Live AI response is temporarily unavailable, but for ${place}, check temperature, humidity, wind speed, and rain probability before planning travel or farm work. If clouds are dense, winds are strong, or rain alerts appear, keep drainage and safety precautions ready. For the most accurate forecast, also check the dashboard weather card and official IMD/NCMRWF updates.`;
+};
+
 
 // 5. API ROUTES
 
@@ -233,8 +245,9 @@ app.post('/api/ai/chat', async (req, res) => {
     res.json({ reply });
   } catch (error) {
     console.error('AI chat error:', error);
-    res.status(502).json({
-      error: 'AI service is temporarily unavailable. Please try again later.'
+    res.json({
+      reply: createFallbackReply(query, language, location),
+      fallback: true
     });
   }
 });
