@@ -316,6 +316,15 @@ export default function AgricultureIntelligence() {
           <CardContent>
             <form onSubmit={handleAnalyze} className="space-y-4">
               <div className="space-y-2 text-left">
+                <Label htmlFor="language">{copy.advisoryLanguage}</Label>
+                <select id="language" value={language} onChange={e => setLanguage(e.target.value)} className={selectClasses}>
+                  {regionalLanguages.map(item => (
+                    <option key={item.value} value={item.value}>{item.label}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="space-y-2 text-left">
                 <Label htmlFor="crop">{copy.cropType}</Label>
                 <select id="crop" value={crop} onChange={e => setCrop(e.target.value)} className={selectClasses}>
                   {cropGroups.map(group => (
@@ -351,15 +360,6 @@ export default function AgricultureIntelligence() {
                 <select id="irrigation" value={irrigation} onChange={e => setIrrigation(e.target.value)} className={selectClasses}>
                   {irrigationTypes.map(item => (
                     <option key={item} value={item}>{item}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="space-y-2 text-left">
-                <Label htmlFor="language">{copy.advisoryLanguage}</Label>
-                <select id="language" value={language} onChange={e => setLanguage(e.target.value)} className={selectClasses}>
-                  {regionalLanguages.map(item => (
-                    <option key={item.value} value={item.value}>{item.label}</option>
                   ))}
                 </select>
               </div>
