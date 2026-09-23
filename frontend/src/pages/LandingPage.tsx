@@ -15,14 +15,11 @@ export default function LandingPage() {
         </div>
         <div className="flex items-center gap-4">
           <Button variant="ghost" onClick={() => navigate('/auth')}>Login</Button>
-          <Button onClick={() => navigate('/dashboard')}>SIH DEMO MODE</Button>
+          <Button onClick={() => navigate('/dashboard')}>Open Dashboard</Button>
         </div>
       </header>
 
       <main className="flex-1 flex flex-col items-center text-center px-4 mt-20 max-w-5xl">
-        <div className="mb-6 inline-flex items-center rounded-full border px-3 py-1 text-xs font-semibold bg-secondary text-secondary-foreground">
-          SIH 2026 • PS 26068
-        </div>
         <h1 className="text-5xl md:text-7xl font-extrabold tracking-tight mb-6 bg-gradient-to-r from-blue-600 via-indigo-500 to-purple-600 bg-clip-text text-transparent">
           AI-Powered Conversational<br/> Weather & Disaster Intelligence
         </h1>
