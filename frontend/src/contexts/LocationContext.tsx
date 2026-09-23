@@ -39,6 +39,37 @@ const getSavedLocation = (): UserLocation => {
   return fallbackLocation;
 };
 
+const resolveLocationName = async (lat: number, lon: number) => {
+  try {
+    const response = await fetch(
+      `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json&zoom=10&addressdetails=1`,
+      {
+        headers: {
+          Accept: 'application/json',
+        },
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error('Reverse geocoding failed');
+    }
+
+    const data = await response.json();
+    const address = data.address || {};
+    const city = address.city || address.town || address.village || address.county || address.district;
+    const state = address.state;
+
+    if (city && state) return `${city}, ${state}`;
+    if (city) return city;
+    if (state) return state;
+    if (data.display_name) return String(data.display_name).split(',').slice(0, 2).join(',').trim();
+  } catch (error) {
+    console.warn('Could not resolve location name:', error);
+  }
+
+  return 'Your Location';
+};
+
 export function LocationProvider({ children }: { children: React.ReactNode }) {
   const [location, setLocation] = useState<UserLocation>(getSavedLocation);
   const [locating, setLocating] = useState(false);
@@ -68,14 +99,18 @@ export function LocationProvider({ children }: { children: React.ReactNode }) {
     }, 12000);
 
     navigator.geolocation.getCurrentPosition(
-      position => {
+      async position => {
         if (settled) return;
         settled = true;
         window.clearTimeout(fallbackTimer);
+        const lat = position.coords.latitude;
+        const lon = position.coords.longitude;
+        const name = await resolveLocationName(lat, lon);
+
         updateLocation({
-          lat: position.coords.latitude,
-          lon: position.coords.longitude,
-          name: 'Your Location',
+          lat,
+          lon,
+          name,
           source: 'gps',
         });
         setLocating(false);
