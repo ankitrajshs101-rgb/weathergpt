@@ -3,10 +3,12 @@ import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { LayoutDashboard, MessageSquare, Map, AlertTriangle, Sprout, BarChart, LogOut, CloudRain } from 'lucide-react';
 import { Button } from '../ui/button';
 import { cn } from '../../lib/utils';
+import { useUserLocation } from '../../contexts/LocationContext';
 
 export default function Layout() {
   const navigate = useNavigate();
   const location = useLocation();
+  const { location: userLocation, locating, refreshLocation } = useUserLocation();
 
   const navItems = [
     { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
@@ -58,7 +60,14 @@ export default function Layout() {
         <header className="h-16 border-b bg-background flex items-center justify-between px-6 shrink-0">
           <div className="font-semibold text-lg capitalize">{location.pathname.split('/')[1] || 'Dashboard'}</div>
           <div className="flex items-center gap-4">
-            <div className="text-sm font-medium px-3 py-1 rounded-full bg-secondary text-secondary-foreground">📍 Darbhanga, Bihar</div>
+            <button
+              type="button"
+              onClick={refreshLocation}
+              className="text-sm font-medium px-3 py-1 rounded-full bg-secondary text-secondary-foreground hover:bg-secondary/80 transition-colors"
+              title="Refresh location"
+            >
+              {locating ? 'Detecting location...' : `Location: ${userLocation.name}`}
+            </button>
             <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold text-sm">
               JD
             </div>

@@ -20,8 +20,22 @@ const PORT = process.env.PORT || 5000;
 // A secret password used by JWT to digitally sign the login tokens. Keep this secret!
 const SECRET_KEY = 'weathergpt_sih_secret';
 
+const allowedOrigins = (process.env.CORS_ORIGIN || 'http://localhost:5173,http://127.0.0.1:5173')
+  .split(',')
+  .map(origin => origin.trim())
+  .filter(Boolean);
+
 // Enable CORS so the React frontend can fetch data from this API
-app.use(cors());
+app.use(cors({
+  origin(origin, callback) {
+    if (!origin || allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+
+    return callback(new Error(`CORS blocked request from ${origin}`));
+  },
+  credentials: true
+}));
 // Tell Express to automatically understand and parse JSON data sent from the frontend
 app.use(express.json());
 
@@ -78,6 +92,14 @@ const authenticate = (req, res, next) => {
 
 
 // 5. API ROUTES
+
+app.get('/api/health', (req, res) => {
+  res.json({
+    ok: true,
+    service: 'WeatherGPT Backend',
+    timestamp: new Date().toISOString()
+  });
+});
 
 // --- REGISTER ROUTE (Create a new account) ---
 app.post('/api/auth/register', async (req, res) => {
@@ -158,6 +180,49 @@ app.get('/api/user/profile', authenticate, (req, res) => {
     if (err || !user) return res.status(404).json({ error: 'User not found' });
     res.json(user);
   });
+});
+
+app.post('/api/ai/chat', async (req, res) => {
+  const { query, language, location } = req.body;
+
+  if (!query || typeof query !== 'string') {
+    return res.status(400).json({ error: 'Query is required' });
+  }
+
+  try {
+    const response = await fetch('https://text.pollinations.ai/openai/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        messages: [
+          {
+            role: 'system',
+            content: `You are WeatherGPT, an advanced AI for weather forecasting, disaster alerts, climate information, farming guidance, and public safety. Reply in the user's language when possible. Detected language or locale: ${language || 'auto'}. User location: ${location || 'not provided'}. Keep responses clear, practical, and under 4 sentences.`
+          },
+          { role: 'user', content: query }
+        ],
+        model: 'openai'
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error(`AI provider returned ${response.status}`);
+    }
+
+    const data = await response.json();
+    const reply = data?.choices?.[0]?.message?.content;
+
+    if (!reply) {
+      throw new Error('AI provider returned an empty response');
+    }
+
+    res.json({ reply });
+  } catch (error) {
+    console.error('AI chat error:', error);
+    res.status(502).json({
+      error: 'AI service is temporarily unavailable. Please try again later.'
+    });
+  }
 });
 
 

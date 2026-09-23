@@ -3,10 +3,11 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../co
 import { getMockAlerts } from '../services/alertService';
 import { AlertTriangle, Clock, ShieldAlert } from 'lucide-react';
 import { Badge } from '../components/ui/badge';
-import { Button } from '../components/ui/button';
+import { useUserLocation } from '../contexts/LocationContext';
 
 export default function AlertCenter() {
-  const alerts = getMockAlerts();
+  const { location } = useUserLocation();
+  const alerts = getMockAlerts(location.name);
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto">

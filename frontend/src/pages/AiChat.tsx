@@ -1,10 +1,57 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, Mic, MapPin, Globe, Paperclip, Loader2, Cloud, AlertTriangle } from 'lucide-react';
+import { Send, Mic, MapPin, Globe, Paperclip, Loader2, Cloud, AlertTriangle, Volume2, VolumeX } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Card, CardContent } from '../components/ui/card';
 import { processQuery, type ChatMessage } from '../services/aiService';
 import { cn } from '../lib/utils';
+import { useUserLocation } from '../contexts/LocationContext';
+
+type SpeechRecognitionConstructor = new () => SpeechRecognition;
+
+interface SpeechRecognition extends EventTarget {
+  continuous: boolean;
+  interimResults: boolean;
+  lang: string;
+  start: () => void;
+  stop: () => void;
+  abort: () => void;
+  onstart: (() => void) | null;
+  onend: (() => void) | null;
+  onerror: ((event: SpeechRecognitionErrorEvent) => void) | null;
+  onresult: ((event: SpeechRecognitionEvent) => void) | null;
+}
+
+interface SpeechRecognitionErrorEvent extends Event {
+  error: string;
+}
+
+interface SpeechRecognitionEvent extends Event {
+  resultIndex: number;
+  results: SpeechRecognitionResultList;
+}
+
+declare global {
+  interface Window {
+    SpeechRecognition?: SpeechRecognitionConstructor;
+    webkitSpeechRecognition?: SpeechRecognitionConstructor;
+  }
+}
+
+const languageOptions = [
+  { label: 'Auto', value: '' },
+  { label: 'Hindi', value: 'hi-IN' },
+  { label: 'English', value: 'en-IN' },
+  { label: 'Bengali', value: 'bn-IN' },
+  { label: 'Tamil', value: 'ta-IN' },
+  { label: 'Telugu', value: 'te-IN' },
+  { label: 'Marathi', value: 'mr-IN' },
+  { label: 'Gujarati', value: 'gu-IN' },
+  { label: 'Kannada', value: 'kn-IN' },
+  { label: 'Malayalam', value: 'ml-IN' },
+  { label: 'Punjabi', value: 'pa-IN' },
+  { label: 'Urdu', value: 'ur-IN' },
+];
 
 export default function AiChat() {
   const [messages, setMessages] = useState<ChatMessage[]>([
@@ -17,7 +64,14 @@ export default function AiChat() {
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
+  const [language, setLanguage] = useState('');
+  const [voiceError, setVoiceError] = useState('');
+  const [speakingId, setSpeakingId] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const recognitionRef = useRef<SpeechRecognition | null>(null);
+  const { location: userLocation, locating, refreshLocation } = useUserLocation();
+  const selectedLanguage = language || navigator.language || 'en-IN';
+  const voiceSupported = typeof window !== 'undefined' && Boolean(window.SpeechRecognition || window.webkitSpeechRecognition);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -27,40 +81,108 @@ export default function AiChat() {
     scrollToBottom();
   }, [messages]);
 
-  const handleSend = async (e?: React.FormEvent) => {
-    if (e) e.preventDefault();
-    if (!input.trim() || loading) return;
+  useEffect(() => {
+    return () => {
+      recognitionRef.current?.abort();
+      window.speechSynthesis?.cancel();
+    };
+  }, []);
 
-    const userMsg: ChatMessage = { id: Date.now().toString(), role: 'user', content: input };
+  const speakMessage = (message: ChatMessage) => {
+    if (!('speechSynthesis' in window) || message.role !== 'assistant') return;
+
+    if (speakingId === message.id) {
+      window.speechSynthesis.cancel();
+      setSpeakingId(null);
+      return;
+    }
+
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(message.content);
+    utterance.lang = selectedLanguage;
+    utterance.rate = 0.95;
+    utterance.onend = () => setSpeakingId(null);
+    utterance.onerror = () => setSpeakingId(null);
+    setSpeakingId(message.id);
+    window.speechSynthesis.speak(utterance);
+  };
+
+  const sendQuery = async (query: string) => {
+    const cleanQuery = query.trim();
+    if (!cleanQuery || loading) return;
+
+    const userMsg: ChatMessage = { id: Date.now().toString(), role: 'user', content: cleanQuery };
     setMessages(prev => [...prev, userMsg]);
     setInput('');
     setLoading(true);
+    setVoiceError('');
 
     try {
-      const response = await processQuery(userMsg.content);
+      const response = await processQuery(userMsg.content, selectedLanguage, userLocation.name);
       setMessages(prev => [...prev, response]);
+      setTimeout(() => speakMessage(response), 100);
     } catch (error) {
       setMessages(prev => [...prev, {
         id: Date.now().toString(),
         role: 'assistant',
-        content: 'AI service is temporarily unavailable.'
+        content: 'AI service is temporarily unavailable. Please make sure the backend is running.'
       }]);
     } finally {
       setLoading(false);
     }
   };
 
+  const handleSend = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    await sendQuery(input);
+  };
+
   const handleVoice = () => {
     if (isRecording) {
-      setIsRecording(false);
-      setInput('Will it rain tomorrow?');
-    } else {
-      setIsRecording(true);
-      setTimeout(() => {
-        setIsRecording(false);
-        setInput('Will it rain tomorrow?');
-      }, 2000);
+      recognitionRef.current?.stop();
+      return;
     }
+
+    const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!Recognition) {
+      setVoiceError('Voice input is not supported in this browser. Please use Chrome or Edge.');
+      return;
+    }
+
+    const recognition = new Recognition();
+    recognitionRef.current = recognition;
+    recognition.lang = selectedLanguage;
+    recognition.continuous = false;
+    recognition.interimResults = true;
+
+    let finalTranscript = '';
+    recognition.onstart = () => {
+      setVoiceError('');
+      setIsRecording(true);
+    };
+    recognition.onresult = event => {
+      let transcript = '';
+      for (let i = event.resultIndex; i < event.results.length; i += 1) {
+        transcript += event.results[i][0].transcript;
+        if (event.results[i].isFinal) {
+          finalTranscript += event.results[i][0].transcript;
+        }
+      }
+      setInput(finalTranscript || transcript);
+    };
+    recognition.onerror = event => {
+      setVoiceError(event.error === 'not-allowed' ? 'Microphone permission denied.' : 'Could not understand the voice input.');
+      setIsRecording(false);
+    };
+    recognition.onend = () => {
+      setIsRecording(false);
+      const spokenText = finalTranscript.trim();
+      if (spokenText) {
+        void sendQuery(spokenText);
+      }
+    };
+
+    recognition.start();
   };
 
   return (
@@ -68,6 +190,9 @@ export default function AiChat() {
       <div className="text-center mb-6 shrink-0">
         <h2 className="text-3xl font-bold">WeatherGPT AI</h2>
         <p className="text-muted-foreground">Ask anything about weather, forecasts, alerts and climate.</p>
+        <button type="button" onClick={refreshLocation} className="mt-2 text-sm text-primary hover:underline">
+          {locating ? 'Detecting your location...' : `Using ${userLocation.name}`}
+        </button>
       </div>
 
       <div className="flex-1 overflow-y-auto space-y-6 p-4 rounded-xl border bg-background/50 backdrop-blur-sm shadow-sm mb-4">
@@ -77,7 +202,21 @@ export default function AiChat() {
               "max-w-[80%] rounded-2xl p-4",
               msg.role === 'user' ? "bg-primary text-primary-foreground rounded-tr-sm" : "bg-card border rounded-tl-sm shadow-sm"
             )}>
-              <p className="text-sm md:text-base leading-relaxed whitespace-pre-wrap">{msg.content}</p>
+              <div className="flex items-start gap-3">
+                <p className="text-sm md:text-base leading-relaxed whitespace-pre-wrap flex-1">{msg.content}</p>
+                {msg.role === 'assistant' && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7 shrink-0"
+                    onClick={() => speakMessage(msg)}
+                    aria-label={speakingId === msg.id ? 'Stop voice' : 'Read answer aloud'}
+                  >
+                    {speakingId === msg.id ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
+                  </Button>
+                )}
+              </div>
               
               {/* Dynamic Components */}
               {msg.component === 'WeatherCard' && msg.data && (
@@ -123,10 +262,20 @@ export default function AiChat() {
           <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground"><Paperclip className="h-5 w-5" /></Button>
         </div>
         <form onSubmit={handleSend} className="flex-1 flex items-center gap-2 pl-2 sm:pl-0 pr-1">
+          <select
+            value={language}
+            onChange={event => setLanguage(event.target.value)}
+            className="hidden md:block h-10 rounded-md border bg-background px-2 text-sm text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+            aria-label="Voice language"
+          >
+            {languageOptions.map(option => (
+              <option key={option.value || 'auto'} value={option.value}>{option.label}</option>
+            ))}
+          </select>
           <Input 
             value={input}
             onChange={e => setInput(e.target.value)}
-            placeholder="Ask WeatherGPT anything..." 
+            placeholder={isRecording ? 'Listening...' : 'Ask WeatherGPT anything...'} 
             className="border-0 shadow-none focus-visible:ring-0 bg-transparent text-base h-12 px-0"
           />
           <Button 
@@ -135,6 +284,9 @@ export default function AiChat() {
             size="icon" 
             className={cn("rounded-full h-10 w-10 shrink-0 transition-all", isRecording && "animate-pulse")}
             onClick={handleVoice}
+            disabled={loading}
+            aria-label={isRecording ? 'Stop listening' : 'Start voice input'}
+            title={voiceSupported ? 'Start voice input' : 'Voice input works in Chrome or Edge'}
           >
             <Mic className="h-5 w-5" />
           </Button>
@@ -148,6 +300,11 @@ export default function AiChat() {
           </Button>
         </form>
       </div>
+      {(!voiceSupported || voiceError) && (
+        <p className="mt-2 text-sm text-red-600 text-center">
+          {voiceError || 'Voice input is not supported in this browser. Please open the app in Chrome or Edge.'}
+        </p>
+      )}
     </div>
   );
 }

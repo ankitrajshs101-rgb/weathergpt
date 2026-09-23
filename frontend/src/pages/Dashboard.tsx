@@ -5,57 +5,33 @@ import { Cloud, Droplets, Wind, AlertTriangle, Loader2, MapPin } from 'lucide-re
 import { getMockAlerts } from '../services/alertService';
 import { Button } from '../components/ui/button';
 import { useNavigate } from 'react-router-dom';
+import { useUserLocation } from '../contexts/LocationContext';
 
 export default function Dashboard() {
   const [weather, setWeather] = useState<WeatherData | null>(null);
   const [hourly, setHourly] = useState<HourlyForecast[]>([]);
   const [loading, setLoading] = useState(true);
-  const [locating, setLocating] = useState(true);
+  const { location, locating, error: locationError, refreshLocation } = useUserLocation();
   
   const alerts = getMockAlerts();
   const navigate = useNavigate();
 
   useEffect(() => {
-    const loadWeather = async (lat?: number, lon?: number, cityName?: string) => {
+    const loadWeather = async () => {
       try {
         setLoading(true);
-        const data = await fetchRealWeather(lat, lon, cityName);
+        const data = await fetchRealWeather(location.lat, location.lon, location.name);
         setWeather(data.current);
         setHourly(data.hourly);
       } catch (err) {
         console.error(err);
       } finally {
         setLoading(false);
-        setLocating(false);
       }
     };
 
-    if ("geolocation" in navigator) {
-      navigator.geolocation.getCurrentPosition(
-        async (position) => {
-          const lat = position.coords.latitude;
-          const lon = position.coords.longitude;
-          try {
-            // Reverse geocoding to get city name
-            const res = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json`);
-            const geoData = await res.json();
-            const city = geoData.address.city || geoData.address.town || geoData.address.village || geoData.address.county || "Your Location";
-            loadWeather(lat, lon, city);
-          } catch (e) {
-            loadWeather(lat, lon, "Your Location");
-          }
-        },
-        (error) => {
-          console.warn("Geolocation denied or failed:", error);
-          // Fallback to default
-          loadWeather();
-        }
-      );
-    } else {
-      // Fallback if geolocation not supported
-      loadWeather();
-    }
-  }, []);
+    loadWeather();
+  }, [location]);
 
   if (loading || !weather) {
     return (
@@ -72,6 +48,11 @@ export default function Dashboard() {
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Good morning, {JSON.parse(localStorage.getItem('user') || '{}').name || 'Citizen'}</h1>
           <p className="text-muted-foreground">{weather.summary}</p>
+          {locationError && (
+            <button type="button" onClick={refreshLocation} className="text-sm text-primary hover:underline mt-2">
+              {locationError} Using default location. Try again.
+            </button>
+          )}
         </div>
         {alerts.length > 0 && (
           <Button variant="destructive" onClick={() => navigate('/alerts')}>

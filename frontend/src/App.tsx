@@ -9,23 +9,26 @@ import LiveMap from './pages/LiveMap';
 import AlertCenter from './pages/AlertCenter';
 import AgricultureIntelligence from './pages/AgricultureIntelligence';
 import ClimateAnalytics from './pages/ClimateAnalytics';
+import { LocationProvider } from './contexts/LocationContext';
 
 function App() {
   return (
-    <Router>
-      <Routes>
-        <Route path="/" element={<LandingPage />} />
-        <Route path="/auth" element={<Auth />} />
-        <Route element={<Layout />}>
-          <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/chat" element={<AiChat />} />
-          <Route path="/map" element={<LiveMap />} />
-          <Route path="/alerts" element={<AlertCenter />} />
-          <Route path="/agriculture" element={<AgricultureIntelligence />} />
-          <Route path="/climate" element={<ClimateAnalytics />} />
-        </Route>
-      </Routes>
-    </Router>
+    <LocationProvider>
+      <Router>
+        <Routes>
+          <Route path="/" element={<LandingPage />} />
+          <Route path="/auth" element={<Auth />} />
+          <Route element={<Layout />}>
+            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/chat" element={<AiChat />} />
+            <Route path="/map" element={<LiveMap />} />
+            <Route path="/alerts" element={<AlertCenter />} />
+            <Route path="/agriculture" element={<AgricultureIntelligence />} />
+            <Route path="/climate" element={<ClimateAnalytics />} />
+          </Route>
+        </Routes>
+      </Router>
+    </LocationProvider>
   );
 }
 
