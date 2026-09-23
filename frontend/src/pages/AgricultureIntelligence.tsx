@@ -202,6 +202,107 @@ const regionalCopy: Record<string, typeof agricultureCopy['en-IN']> = {
   'sa-IN': { ...agricultureCopy['hi-IN'], title: 'स्मार्ट कृषिः परामर्शः', analyzeRisk: 'जोखिमं विश्लेषयतु' },
 };
 
+const optionTranslations: Record<string, Record<string, string>> = {
+  'hi-IN': {
+    Cereals: 'अनाज',
+    Pulses: 'दालें',
+    Oilseeds: 'तिलहन',
+    'Cash Crops': 'नकदी फसलें',
+    Vegetables: 'सब्जियां',
+    Fruits: 'फल',
+    'Spices and Plantation': 'मसाले और बागान',
+    'Rice / Paddy': 'धान',
+    Wheat: 'गेहूं',
+    Maize: 'मक्का',
+    Barley: 'जौ',
+    'Sorghum / Jowar': 'ज्वार',
+    'Pearl Millet / Bajra': 'बाजरा',
+    'Finger Millet / Ragi': 'रागी',
+    'Chickpea / Gram': 'चना',
+    'Pigeon Pea / Arhar': 'अरहर',
+    'Lentil / Masoor': 'मसूर',
+    'Black Gram / Urad': 'उड़द',
+    'Green Gram / Moong': 'मूंग',
+    'Field Pea': 'मटर',
+    Mustard: 'सरसों',
+    Groundnut: 'मूंगफली',
+    Soybean: 'सोयाबीन',
+    Sunflower: 'सूरजमुखी',
+    'Sesame / Til': 'तिल',
+    Castor: 'अरंडी',
+    Linseed: 'अलसी',
+    Sugarcane: 'गन्ना',
+    Cotton: 'कपास',
+    Jute: 'जूट',
+    Tea: 'चाय',
+    Coffee: 'कॉफी',
+    Tobacco: 'तंबाकू',
+    Potato: 'आलू',
+    Tomato: 'टमाटर',
+    Onion: 'प्याज',
+    Brinjal: 'बैंगन',
+    Okra: 'भिंडी',
+    Cabbage: 'पत्ता गोभी',
+    Cauliflower: 'फूलगोभी',
+    Chilli: 'मिर्च',
+    Cucumber: 'खीरा',
+    Pumpkin: 'कद्दू',
+    Mango: 'आम',
+    Banana: 'केला',
+    Guava: 'अमरूद',
+    Papaya: 'पपीता',
+    Litchi: 'लीची',
+    Apple: 'सेब',
+    Grapes: 'अंगूर',
+    Pomegranate: 'अनार',
+    Citrus: 'नींबू वर्गीय फल',
+    Turmeric: 'हल्दी',
+    Ginger: 'अदरक',
+    Coriander: 'धनिया',
+    Cumin: 'जीरा',
+    'Black Pepper': 'काली मिर्च',
+    Cardamom: 'इलायची',
+    Coconut: 'नारियल',
+    Arecanut: 'सुपारी',
+    'Land Preparation': 'खेत तैयारी',
+    Nursery: 'नर्सरी',
+    'Sowing / Transplanting': 'बुवाई / रोपाई',
+    Germination: 'अंकुरण',
+    'Vegetative Growth': 'वनस्पतिक वृद्धि',
+    'Tillering / Branching': 'टिलरिंग / शाखा बनना',
+    Flowering: 'फूल आना',
+    'Fruit / Pod Formation': 'फल / फली बनना',
+    'Grain / Bulb / Tuber Filling': 'दाना / कंद भरना',
+    'Ripening / Maturity': 'पकना / परिपक्वता',
+    Harvesting: 'कटाई',
+    'Post-Harvest Storage': 'कटाई के बाद भंडारण',
+    Normal: 'सामान्य',
+    'Waterlogging Risk': 'जलभराव का खतरा',
+    'Dry Soil': 'सूखी मिट्टी',
+    'Pest Symptoms': 'कीट के लक्षण',
+    'Disease Symptoms': 'रोग के लक्षण',
+    'Heat Stress': 'गर्मी का तनाव',
+    'Cold Stress': 'ठंड का तनाव',
+    Rainfed: 'वर्षा आधारित',
+    Canal: 'नहर',
+    Drip: 'ड्रिप',
+    Sprinkler: 'स्प्रिंकलर',
+    'Tube Well': 'ट्यूबवेल',
+    'Flood Irrigation': 'बाढ़ सिंचाई',
+  },
+};
+
+const indicFallbackLanguages = new Set([
+  'bn-IN', 'ta-IN', 'te-IN', 'mr-IN', 'gu-IN', 'kn-IN', 'ml-IN', 'pa-IN',
+  'ur-IN', 'or-IN', 'as-IN', 'kok-IN', 'mai-IN', 'ne-IN', 'sa-IN',
+]);
+
+const getOptionLabel = (value: string, language: string) => {
+  if (language === 'en-IN') return value;
+  const dictionary = optionTranslations[language] || (indicFallbackLanguages.has(language) ? optionTranslations['hi-IN'] : undefined);
+  return dictionary?.[value] || value;
+};
+
 // Agriculture page flow:
 // 1. Farmer selects crop, crop stage, field condition, and irrigation source.
 // 2. getRiskProfile decides the risk level.
@@ -246,11 +347,15 @@ export default function AgricultureIntelligence() {
   const navigate = useNavigate();
   const { location, locating, refreshLocation } = useUserLocation();
   const copy = regionalCopy[language] || regionalCopy['en-IN'];
+  const cropLabel = getOptionLabel(crop, language);
+  const stageLabel = getOptionLabel(stage, language);
+  const conditionLabel = getOptionLabel(condition, language);
+  const irrigationLabel = getOptionLabel(irrigation, language);
 
   const risk = useMemo(() => getRiskProfile(stage, condition), [stage, condition]);
   const riskLevelText = risk.level === 'High' ? copy.high : risk.level === 'Moderate' ? copy.moderate : copy.low;
   const riskHeadline = risk.level === 'High' ? copy.headlineHigh : risk.level === 'Moderate' ? copy.headlineModerate : copy.headlineLow;
-  const recommendations = useMemo(() => copy.tips(crop, stage, condition, irrigation), [copy, crop, stage, condition, irrigation]);
+  const recommendations = useMemo(() => copy.tips(cropLabel, stageLabel, condition, irrigation), [copy, cropLabel, stageLabel, condition, irrigation]);
 
   const handleAnalyze = (e: React.FormEvent) => {
     e.preventDefault();
@@ -260,10 +365,10 @@ export default function AgricultureIntelligence() {
   const askWeatherGptAboutCrop = () => {
     const prompt = [
       copy.promptIntro,
-      `Crop: ${crop}`,
-      `Crop stage: ${stage}`,
-      `Field condition: ${condition}`,
-      `Irrigation source: ${irrigation}`,
+      `Crop: ${cropLabel} (${crop})`,
+      `Crop stage: ${stageLabel} (${stage})`,
+      `Field condition: ${conditionLabel} (${condition})`,
+      `Irrigation source: ${irrigationLabel} (${irrigation})`,
       `Risk level: ${riskLevelText}`,
       `Risk headline: ${riskHeadline}`,
       `Location: ${location.name}`,
@@ -276,10 +381,10 @@ export default function AgricultureIntelligence() {
         agriculturePrompt: prompt,
         agricultureLanguage: language,
         agricultureProfile: {
-          crop,
-          stage,
-          condition,
-          irrigation,
+          crop: cropLabel,
+          stage: stageLabel,
+          condition: conditionLabel,
+          irrigation: irrigationLabel,
           riskLevel: riskLevelText,
           location: location.name,
         },
@@ -328,9 +433,9 @@ export default function AgricultureIntelligence() {
                 <Label htmlFor="crop">{copy.cropType}</Label>
                 <select id="crop" value={crop} onChange={e => setCrop(e.target.value)} className={selectClasses}>
                   {cropGroups.map(group => (
-                    <optgroup key={group.group} label={group.group}>
+                    <optgroup key={group.group} label={getOptionLabel(group.group, language)}>
                       {group.crops.map(item => (
-                        <option key={item} value={item}>{item}</option>
+                        <option key={item} value={item}>{getOptionLabel(item, language)}</option>
                       ))}
                     </optgroup>
                   ))}
@@ -341,7 +446,7 @@ export default function AgricultureIntelligence() {
                 <Label htmlFor="stage">{copy.cropStage}</Label>
                 <select id="stage" value={stage} onChange={e => setStage(e.target.value)} className={selectClasses}>
                   {cropStages.map(item => (
-                    <option key={item} value={item}>{item}</option>
+                    <option key={item} value={item}>{getOptionLabel(item, language)}</option>
                   ))}
                 </select>
               </div>
@@ -350,7 +455,7 @@ export default function AgricultureIntelligence() {
                 <Label htmlFor="condition">{copy.fieldCondition}</Label>
                 <select id="condition" value={condition} onChange={e => setCondition(e.target.value)} className={selectClasses}>
                   {farmConditions.map(item => (
-                    <option key={item} value={item}>{item}</option>
+                    <option key={item} value={item}>{getOptionLabel(item, language)}</option>
                   ))}
                 </select>
               </div>
@@ -359,7 +464,7 @@ export default function AgricultureIntelligence() {
                 <Label htmlFor="irrigation">{copy.irrigationSource}</Label>
                 <select id="irrigation" value={irrigation} onChange={e => setIrrigation(e.target.value)} className={selectClasses}>
                   {irrigationTypes.map(item => (
-                    <option key={item} value={item}>{item}</option>
+                    <option key={item} value={item}>{getOptionLabel(item, language)}</option>
                   ))}
                 </select>
               </div>
@@ -378,7 +483,7 @@ export default function AgricultureIntelligence() {
                 <Wheat className="h-8 w-8 text-amber-500" />
                 <div>
                   <p className="text-sm text-muted-foreground">{copy.crop}</p>
-                  <p className="font-semibold">{crop}</p>
+                  <p className="font-semibold">{cropLabel}</p>
                 </div>
               </CardContent>
             </Card>
@@ -387,7 +492,7 @@ export default function AgricultureIntelligence() {
                 <Leaf className="h-8 w-8 text-green-500" />
                 <div>
                   <p className="text-sm text-muted-foreground">{copy.stage}</p>
-                  <p className="font-semibold">{stage}</p>
+                  <p className="font-semibold">{stageLabel}</p>
                 </div>
               </CardContent>
             </Card>
@@ -432,7 +537,7 @@ export default function AgricultureIntelligence() {
                 </CardHeader>
                 <CardContent>
                   <p className="text-base">
-                    {copy.irrigationText(crop, stage)}
+                    {copy.irrigationText(cropLabel, stageLabel)}
                   </p>
                   <div className="mt-4 p-3 bg-muted rounded-md text-sm text-muted-foreground border">
                     {copy.disclaimer}
@@ -441,7 +546,7 @@ export default function AgricultureIntelligence() {
               </Card>
 
               <Button variant="outline" className="w-full border-green-200 text-green-700 hover:bg-green-50 dark:hover:bg-green-900/20 py-6" onClick={askWeatherGptAboutCrop}>
-                {copy.ask} {crop} <ArrowRight className="ml-2 h-5 w-5" />
+                {copy.ask} {cropLabel} <ArrowRight className="ml-2 h-5 w-5" />
               </Button>
             </>
           ) : (
