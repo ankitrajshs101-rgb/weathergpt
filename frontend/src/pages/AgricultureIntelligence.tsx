@@ -58,6 +58,12 @@ const irrigationTypes = ['Rainfed', 'Canal', 'Drip', 'Sprinkler', 'Tube Well', '
 
 const selectClasses = 'h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring';
 
+// Agriculture page flow:
+// 1. Farmer selects crop, crop stage, field condition, and irrigation source.
+// 2. getRiskProfile decides the risk level.
+// 3. getRecommendations builds simple advisory points.
+// 4. UI renders summary cards and action guidance.
+
 const getRiskProfile = (stage: string, condition: string) => {
   if (condition.includes('Waterlogging') || stage.includes('Flowering')) {
     return {

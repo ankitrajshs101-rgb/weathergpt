@@ -1,3 +1,14 @@
+// WeatherGPT backend
+//
+// Read this file in this order:
+// 1. Imports and server setup
+// 2. CORS and JSON setup
+// 3. SQLite database setup
+// 4. Authentication helper
+// 5. Weather and AI helper functions
+// 6. API routes
+// 7. Start server
+
 // 1. IMPORTING LIBRARIES
 // 'express' is the framework we use to create our web server and handle API requests (GET, POST, etc.)
 const express = require('express');
@@ -90,6 +101,9 @@ const authenticate = (req, res, next) => {
   }
 };
 
+// 5. HELPER FUNCTIONS
+// These helpers keep the route code shorter and easier to understand.
+
 const createFallbackReply = (query, language, location) => {
   const locale = (language || '').toLowerCase();
   const isHindi = locale.startsWith('hi') || /[\u0900-\u097F]/.test(query);
@@ -102,6 +116,7 @@ const createFallbackReply = (query, language, location) => {
   return `Live AI response is temporarily unavailable, but for ${place}, check temperature, humidity, wind speed, and rain probability before planning travel or farm work. If clouds are dense, winds are strong, or rain alerts appear, keep drainage and safety precautions ready. For the most accurate forecast, also check the dashboard weather card and official IMD/NCMRWF updates.`;
 };
 
+// Converts Open-Meteo weather codes plus thresholds into human-friendly labels.
 const getWeatherCondition = (code, temp, windSpeed, rainProb) => {
   if (temp >= 42) return 'Severe Heat Wave';
   if (temp >= 37) return 'Heat Wave';
@@ -120,6 +135,7 @@ const getWeatherCondition = (code, temp, windSpeed, rainProb) => {
   return 'Stable Weather';
 };
 
+// Detects important hazards that should be shown to users.
 const getWeatherRisk = ({ temp, humidity, windSpeed, rainProb, condition }) => {
   const hazards = [];
 
@@ -141,6 +157,7 @@ const getWeatherRisk = ({ temp, humidity, windSpeed, rainProb, condition }) => {
   return { level: 'Low', hazards };
 };
 
+// Fetches live weather so the AI can answer using real local data.
 const fetchWeatherContext = async ({ lat, lon, location }) => {
   if (typeof lat !== 'number' || typeof lon !== 'number') return null;
 
@@ -173,6 +190,7 @@ const fetchWeatherContext = async ({ lat, lon, location }) => {
   };
 };
 
+// Converts weather object into plain English for the AI system prompt.
 const formatWeatherContext = (weather) => {
   if (!weather) return 'Live weather data is unavailable.';
 
@@ -180,7 +198,7 @@ const formatWeatherContext = (weather) => {
 };
 
 
-// 5. API ROUTES
+// 6. API ROUTES
 
 app.get('/', (req, res) => {
   res.json({

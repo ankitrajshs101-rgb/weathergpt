@@ -8,6 +8,13 @@ export interface ChatMessage {
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
+// aiService is the frontend bridge to the backend AI route.
+//
+// Flow:
+// 1. AiChat sends user question, selected language, and current location.
+// 2. Backend adds live weather context and asks the AI service.
+// 3. This file returns a ChatMessage that the UI can render.
+
 interface QueryLocation {
   name: string;
   lat: number;
@@ -19,6 +26,7 @@ const weatherKeywords = [
   'thunderstorm', 'storm', 'wind', 'humidity', 'temperature', 'cold', 'alert'
 ];
 
+// Main function used by AiChat.tsx.
 export const processQuery = async (
   query: string,
   language = navigator.language,
@@ -47,7 +55,7 @@ export const processQuery = async (
     const reply = data.reply;
     const liveWeather = data.weather;
 
-    // We can also trigger dynamic UI components based on keywords in the AI's response or user's prompt
+    // Show richer cards for weather/alert questions.
     let component: ChatMessage['component'];
     let componentData: any;
 

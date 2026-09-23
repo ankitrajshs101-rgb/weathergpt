@@ -1,5 +1,13 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
 
+// LocationContext shares one location value across the whole app.
+//
+// Flow:
+// 1. Start with saved location or Darbhanga fallback.
+// 2. Ask browser for GPS permission.
+// 3. Convert GPS lat/lon into a city/state name.
+// 4. Save location in localStorage so other pages can reuse it.
+
 interface UserLocation {
   lat: number;
   lon: number;
@@ -23,6 +31,7 @@ const fallbackLocation: UserLocation = {
 
 const LocationContext = createContext<LocationContextValue | null>(null);
 
+// Reads last known location from the browser.
 const getSavedLocation = (): UserLocation => {
   try {
     const saved = localStorage.getItem('weathergpt:user-location');
@@ -39,6 +48,7 @@ const getSavedLocation = (): UserLocation => {
   return fallbackLocation;
 };
 
+// Converts GPS coordinates into a readable location name.
 const resolveLocationName = async (lat: number, lon: number) => {
   try {
     const response = await fetch(
@@ -80,6 +90,7 @@ export function LocationProvider({ children }: { children: React.ReactNode }) {
     localStorage.setItem('weathergpt:user-location', JSON.stringify(nextLocation));
   };
 
+  // Call this when user clicks the location button or when app first loads.
   const refreshLocation = () => {
     if (!('geolocation' in navigator)) {
       setError('Location is not supported in this browser.');

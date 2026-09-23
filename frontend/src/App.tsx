@@ -11,6 +11,8 @@ import AgricultureIntelligence from './pages/AgricultureIntelligence';
 import ClimateAnalytics from './pages/ClimateAnalytics';
 import { LocationProvider } from './contexts/LocationContext';
 
+// App.tsx is the frontend route map.
+// Add new pages here, then add sidebar links in components/layout/Layout.tsx.
 function App() {
   return (
     <LocationProvider>

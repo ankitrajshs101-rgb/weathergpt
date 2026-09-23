@@ -53,6 +53,11 @@ const languageOptions = [
   { label: 'Urdu', value: 'ur-IN' },
 ];
 
+// AiChat page flow:
+// 1. User types or speaks a question.
+// 2. sendQuery sends the question plus location/language to aiService.
+// 3. The answer is added to messages and can be spoken aloud.
+// 4. Weather/alert cards render when aiService marks a message with a component.
 export default function AiChat() {
   const [messages, setMessages] = useState<ChatMessage[]>([
     {

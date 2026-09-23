@@ -1,4 +1,7 @@
-// Real-time Weather Service using Open-Meteo (GFS Models)
+// Real-time Weather Service using Open-Meteo.
+//
+// Used by Dashboard.tsx.
+// If you need to add a new weather label, edit getWeatherCondition below.
 
 export interface WeatherData {
   temp: number;
@@ -19,6 +22,7 @@ export interface HourlyForecast {
   condition: string;
 }
 
+// Converts Open-Meteo weather codes and simple thresholds into readable labels.
 const getWeatherCondition = (code: number, temp?: number, windSpeed?: number, rainProb?: number): string => {
   if (typeof temp === 'number' && temp >= 42) return "Severe Heat Wave";
   if (typeof temp === 'number' && temp >= 37) return "Heat Wave";
@@ -37,6 +41,7 @@ const getWeatherCondition = (code: number, temp?: number, windSpeed?: number, ra
   return "Stable Weather";
 };
 
+// Fetches current weather and a small hourly forecast for the dashboard.
 export const fetchRealWeather = async (lat = 26.1542, lon = 85.8918, locationName = "Darbhanga, Bihar"): Promise<{current: WeatherData, hourly: HourlyForecast[]}> => {
   try {
     const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,apparent_temperature,precipitation,weather_code,wind_speed_10m&hourly=temperature_2m,precipitation_probability,weather_code,wind_speed_10m&timezone=Asia%2FKolkata`);
