@@ -93,6 +93,20 @@ const authenticate = (req, res, next) => {
 
 // 5. API ROUTES
 
+app.get('/', (req, res) => {
+  res.json({
+    ok: true,
+    service: 'WeatherGPT Backend',
+    message: 'Backend is live. Use /api/health to check status and connect the frontend with VITE_API_URL.',
+    endpoints: {
+      health: '/api/health',
+      login: '/api/auth/login',
+      register: '/api/auth/register',
+      aiChat: '/api/ai/chat'
+    }
+  });
+});
+
 app.get('/api/health', (req, res) => {
   res.json({
     ok: true,
