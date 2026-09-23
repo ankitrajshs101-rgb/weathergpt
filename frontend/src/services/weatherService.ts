@@ -19,16 +19,22 @@ export interface HourlyForecast {
   condition: string;
 }
 
-const getWeatherCondition = (code: number): string => {
+const getWeatherCondition = (code: number, temp?: number, windSpeed?: number, rainProb?: number): string => {
+  if (typeof temp === 'number' && temp >= 42) return "Severe Heat Wave";
+  if (typeof temp === 'number' && temp >= 37) return "Heat Wave";
+  if (typeof windSpeed === 'number' && windSpeed >= 50) return "Damaging Winds";
+  if (typeof rainProb === 'number' && rainProb >= 80) return "Very High Rain Probability";
   if (code === 0) return "Clear Sky";
   if (code === 1 || code === 2 || code === 3) return "Partly Cloudy";
   if (code === 45 || code === 48) return "Fog";
-  if (code >= 51 && code <= 55) return "Drizzle";
+  if (code >= 51 && code <= 57) return "Drizzle";
   if (code >= 61 && code <= 65) return "Rain";
-  if (code >= 71 && code <= 75) return "Snow";
-  if (code >= 80 && code <= 82) return "Heavy Rain";
+  if (code >= 66 && code <= 67) return "Freezing Rain";
+  if (code >= 71 && code <= 77) return "Snow";
+  if (code >= 80 && code <= 82) return "Heavy Rain Showers";
+  if (code >= 85 && code <= 86) return "Snow Showers";
   if (code >= 95) return "Thunderstorm";
-  return "Clear";
+  return "Stable Weather";
 };
 
 export const fetchRealWeather = async (lat = 26.1542, lon = 85.8918, locationName = "Darbhanga, Bihar"): Promise<{current: WeatherData, hourly: HourlyForecast[]}> => {
@@ -36,14 +42,20 @@ export const fetchRealWeather = async (lat = 26.1542, lon = 85.8918, locationNam
     const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,apparent_temperature,precipitation,weather_code,wind_speed_10m&hourly=temperature_2m,precipitation_probability,weather_code,wind_speed_10m&timezone=Asia%2FKolkata`);
     const data = await res.json();
 
+    const temp = Math.round(data.current.temperature_2m);
+    const feelsLike = Math.round(data.current.apparent_temperature);
+    const windSpeed = Math.round(data.current.wind_speed_10m);
+    const rainProb = data.hourly.precipitation_probability[0];
+    const condition = getWeatherCondition(data.current.weather_code, temp, windSpeed, rainProb);
+
     const current: WeatherData = {
-      temp: Math.round(data.current.temperature_2m),
-      feelsLike: Math.round(data.current.apparent_temperature),
+      temp,
+      feelsLike,
       humidity: data.current.relative_humidity_2m,
-      windSpeed: Math.round(data.current.wind_speed_10m),
-      rainProb: data.hourly.precipitation_probability[0],
-      condition: getWeatherCondition(data.current.weather_code),
-      summary: `Current conditions feature ${getWeatherCondition(data.current.weather_code).toLowerCase()} with a temperature of ${Math.round(data.current.temperature_2m)}°C. Data powered by GFS NWP Models.`,
+      windSpeed,
+      rainProb,
+      condition,
+      summary: `Current conditions feature ${condition.toLowerCase()} with a temperature of ${temp}°C. Data powered by GFS NWP Models.`,
       location: locationName
     };
 

@@ -8,7 +8,22 @@ export interface ChatMessage {
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
-export const processQuery = async (query: string, language = navigator.language, locationName = 'Your Location'): Promise<ChatMessage> => {
+interface QueryLocation {
+  name: string;
+  lat: number;
+  lon: number;
+}
+
+const weatherKeywords = [
+  'weather', 'rain', 'tomorrow', 'mausam', 'barish', 'fog', 'heat', 'heat wave',
+  'thunderstorm', 'storm', 'wind', 'humidity', 'temperature', 'cold', 'alert'
+];
+
+export const processQuery = async (
+  query: string,
+  language = navigator.language,
+  location: QueryLocation = { name: 'Your Location', lat: 26.1542, lon: 85.8918 }
+): Promise<ChatMessage> => {
   const lowerQuery = query.toLowerCase();
   
   try {
@@ -18,7 +33,9 @@ export const processQuery = async (query: string, language = navigator.language,
       body: JSON.stringify({
         query,
         language,
-        location: locationName
+        location: location.name,
+        lat: location.lat,
+        lon: location.lon
       })
     });
 
@@ -28,17 +45,18 @@ export const processQuery = async (query: string, language = navigator.language,
 
     const data = await response.json();
     const reply = data.reply;
+    const liveWeather = data.weather;
 
     // We can also trigger dynamic UI components based on keywords in the AI's response or user's prompt
     let component: ChatMessage['component'];
     let componentData: any;
 
-    if (lowerQuery.includes('rain') || lowerQuery.includes('weather') || lowerQuery.includes('tomorrow')) {
+    if (weatherKeywords.some(keyword => lowerQuery.includes(keyword))) {
       component = 'WeatherCard';
-      componentData = { temp: 28, condition: 'High Rain Probability', location: locationName };
+      componentData = liveWeather || { temp: 28, condition: 'Weather Update', location: location.name };
     } else if (lowerQuery.includes('alert') || lowerQuery.includes('risk') || lowerQuery.includes('disaster')) {
       component = 'AlertCard';
-      componentData = { location: 'Bihar Region' };
+      componentData = { location: location.name };
     }
 
     return {

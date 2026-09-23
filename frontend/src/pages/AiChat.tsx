@@ -118,7 +118,7 @@ export default function AiChat() {
     setVoiceError('');
 
     try {
-      const response = await processQuery(userMsg.content, selectedLanguage, userLocation.name);
+      const response = await processQuery(userMsg.content, selectedLanguage, userLocation);
       setMessages(prev => [...prev, response]);
       setTimeout(() => speakMessage(response), 100);
     } catch (error) {
@@ -221,12 +221,25 @@ export default function AiChat() {
               {/* Dynamic Components */}
               {msg.component === 'WeatherCard' && msg.data && (
                 <Card className="mt-4 bg-gradient-to-br from-blue-500 to-indigo-600 text-white border-0 shadow-md">
-                  <CardContent className="p-4 flex items-center justify-between">
-                    <div>
-                      <div className="text-3xl font-bold">{msg.data.temp}°C</div>
-                      <div className="text-sm text-white/80">{msg.data.condition} in {msg.data.location}</div>
+                  <CardContent className="p-4 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <div className="text-3xl font-bold">{msg.data.temp}°C</div>
+                        <div className="text-sm text-white/80">{msg.data.condition} in {msg.data.location}</div>
+                      </div>
+                      <Cloud className="h-10 w-10 text-white/90" />
                     </div>
-                    <Cloud className="h-10 w-10 text-white/90" />
+                    <div>
+                      <div className="grid grid-cols-2 gap-2 text-xs text-white/85 md:grid-cols-4">
+                        <div className="rounded-md bg-white/15 p-2">Feels {msg.data.feelsLike ?? msg.data.temp}°C</div>
+                        <div className="rounded-md bg-white/15 p-2">Rain {msg.data.rainProb ?? 0}%</div>
+                        <div className="rounded-md bg-white/15 p-2">Humidity {msg.data.humidity ?? '--'}%</div>
+                        <div className="rounded-md bg-white/15 p-2">Wind {msg.data.windSpeed ?? '--'} km/h</div>
+                      </div>
+                      <div className="mt-2 text-xs text-white/90">
+                        Risk: {msg.data.riskLevel || 'Low'}{msg.data.hazards?.length ? ` - ${msg.data.hazards.join(', ')}` : ''}
+                      </div>
+                    </div>
                   </CardContent>
                 </Card>
               )}

@@ -102,6 +102,83 @@ const createFallbackReply = (query, language, location) => {
   return `Live AI response is temporarily unavailable, but for ${place}, check temperature, humidity, wind speed, and rain probability before planning travel or farm work. If clouds are dense, winds are strong, or rain alerts appear, keep drainage and safety precautions ready. For the most accurate forecast, also check the dashboard weather card and official IMD/NCMRWF updates.`;
 };
 
+const getWeatherCondition = (code, temp, windSpeed, rainProb) => {
+  if (temp >= 42) return 'Severe Heat Wave';
+  if (temp >= 37) return 'Heat Wave';
+  if (windSpeed >= 50) return 'Damaging Winds';
+  if (rainProb >= 80) return 'Very High Rain Probability';
+  if (code === 0) return 'Clear Sky';
+  if (code === 1 || code === 2 || code === 3) return 'Partly Cloudy';
+  if (code === 45 || code === 48) return 'Fog';
+  if (code >= 51 && code <= 57) return 'Drizzle';
+  if (code >= 61 && code <= 65) return 'Rain';
+  if (code >= 66 && code <= 67) return 'Freezing Rain';
+  if (code >= 71 && code <= 77) return 'Snow';
+  if (code >= 80 && code <= 82) return 'Heavy Rain Showers';
+  if (code >= 85 && code <= 86) return 'Snow Showers';
+  if (code >= 95) return 'Thunderstorm';
+  return 'Stable Weather';
+};
+
+const getWeatherRisk = ({ temp, humidity, windSpeed, rainProb, condition }) => {
+  const hazards = [];
+
+  if (condition.includes('Heat Wave')) hazards.push('heat wave');
+  if (condition.includes('Fog')) hazards.push('fog');
+  if (condition.includes('Thunderstorm')) hazards.push('thunderstorm');
+  if (condition.includes('Rain') || rainProb >= 70) hazards.push('heavy rain');
+  if (windSpeed >= 40) hazards.push('strong wind');
+  if (humidity >= 85 && temp >= 32) hazards.push('humid heat stress');
+
+  if (hazards.some(hazard => ['heat wave', 'thunderstorm', 'heavy rain', 'strong wind'].includes(hazard))) {
+    return { level: 'High', hazards };
+  }
+
+  if (hazards.length > 0 || rainProb >= 45 || temp >= 35) {
+    return { level: 'Moderate', hazards };
+  }
+
+  return { level: 'Low', hazards };
+};
+
+const fetchWeatherContext = async ({ lat, lon, location }) => {
+  if (typeof lat !== 'number' || typeof lon !== 'number') return null;
+
+  const response = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,apparent_temperature,precipitation,weather_code,wind_speed_10m&hourly=precipitation_probability,temperature_2m,weather_code,wind_speed_10m&forecast_days=2&timezone=Asia%2FKolkata`);
+
+  if (!response.ok) {
+    throw new Error(`Weather provider returned ${response.status}`);
+  }
+
+  const data = await response.json();
+  const current = data.current || {};
+  const rainProb = data.hourly?.precipitation_probability?.[0] ?? 0;
+  const temp = Math.round(current.temperature_2m);
+  const feelsLike = Math.round(current.apparent_temperature);
+  const humidity = current.relative_humidity_2m;
+  const windSpeed = Math.round(current.wind_speed_10m);
+  const condition = getWeatherCondition(current.weather_code, temp, windSpeed, rainProb);
+  const risk = getWeatherRisk({ temp, humidity, windSpeed, rainProb, condition });
+
+  return {
+    location: location || 'your area',
+    temp,
+    feelsLike,
+    humidity,
+    windSpeed,
+    rainProb,
+    condition,
+    riskLevel: risk.level,
+    hazards: risk.hazards
+  };
+};
+
+const formatWeatherContext = (weather) => {
+  if (!weather) return 'Live weather data is unavailable.';
+
+  return `Live weather for ${weather.location}: ${weather.temp}°C, feels like ${weather.feelsLike}°C, humidity ${weather.humidity}%, wind ${weather.windSpeed} km/h, rain probability ${weather.rainProb}%, condition ${weather.condition}, risk ${weather.riskLevel}, hazards ${weather.hazards.join(', ') || 'none'}.`;
+};
+
 
 // 5. API ROUTES
 
@@ -209,10 +286,17 @@ app.get('/api/user/profile', authenticate, (req, res) => {
 });
 
 app.post('/api/ai/chat', async (req, res) => {
-  const { query, language, location } = req.body;
+  const { query, language, location, lat, lon } = req.body;
 
   if (!query || typeof query !== 'string') {
     return res.status(400).json({ error: 'Query is required' });
+  }
+
+  let weather = null;
+  try {
+    weather = await fetchWeatherContext({ lat, lon, location });
+  } catch (error) {
+    console.error('Weather context error:', error);
   }
 
   try {
@@ -223,7 +307,7 @@ app.post('/api/ai/chat', async (req, res) => {
         messages: [
           {
             role: 'system',
-            content: `You are WeatherGPT, an advanced AI for weather forecasting, disaster alerts, climate information, farming guidance, and public safety. Reply in the user's language when possible. Detected language or locale: ${language || 'auto'}. User location: ${location || 'not provided'}. Keep responses clear, practical, and under 4 sentences.`
+            content: `You are WeatherGPT, an advanced AI for weather forecasting, disaster alerts, climate information, farming guidance, and public safety. Reply in the user's language when possible. Detected language or locale: ${language || 'auto'}. User location: ${location || 'not provided'}. ${formatWeatherContext(weather)} Discuss relevant weather types such as rain, fog, heat wave, thunderstorm, wind, humidity, and crop safety when useful. Keep responses clear, practical, and under 4 sentences.`
           },
           { role: 'user', content: query }
         ],
@@ -242,11 +326,12 @@ app.post('/api/ai/chat', async (req, res) => {
       throw new Error('AI provider returned an empty response');
     }
 
-    res.json({ reply });
+    res.json({ reply, weather });
   } catch (error) {
     console.error('AI chat error:', error);
     res.json({
       reply: createFallbackReply(query, language, location),
+      weather,
       fallback: true
     });
   }
